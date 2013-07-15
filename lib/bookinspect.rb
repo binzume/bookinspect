@@ -14,28 +14,6 @@ class BookInfo
   end
 end
 
-class PDFImages
-  @@path = 'pdfimages'
-
-  def self.set_path path
-    @@path = path
-  end
-
-  def initialize file
-    @file = file
-  end
-
-  def to_jpg first_page, last_page
-    count = last_page - first_page + 1
-    Dir.mktmpdir do |dir|
-      system(@@path, '-f', first_page.to_s, '-l', last_page.to_s, '-j', @file, "#{dir}/page")
-      Dir.glob("#{dir}/page*").each do |page|
-        yield page
-      end
-    end
-  end
-end
-
 class BookInspect
   DENSITY = 200
   QUALITY = 100
@@ -56,10 +34,9 @@ class BookInspect
     isbn = nil
     pdf_reader = PDF::Reader.new file
     max_page_num = pdf_reader.page_count
-    pdfimage = PDFImages.new(file)
-    [[1, first_check_pages], [max_page_num - last_check_pages, max_page_num]].each do |s, e|
-      pdfimage.to_jpg(s, e) do |page|
-        page_image = Magick::Image.read(page).shift
+    [[max_page_num - last_check_pages, max_page_num],[1, first_check_pages] ].each do |s, e|
+      (s .. e).each do |pn|
+        page_image = _read_image_from_pdf(pdf_reader, pn).shift
         page_image.strip!
         [90, 90, 90].each do |degree|
           rotated_page_image = page_image.rotate!(degree)
@@ -80,8 +57,9 @@ class BookInspect
     return BookInfo.new(max_page_num, isbn, result)
   end
 
-  def _read_image_from_pdf(file, page)
-    images = Magick::Image.read("#{file}[#{page}]") do
+  def _read_image_from_pdf(reader, page)
+    obj = reader.pages[page].xobjects.find{|k,v| v.hash[:Subtype] == :Image} 
+    images = Magick::Image.from_blob(obj[1].data) do
       self.density = DENSITY
       self.quality = QUALITY
     end
@@ -110,3 +88,4 @@ class BookInspect
     return res.items
   end
 end
+
