@@ -51,8 +51,9 @@ command :rename do |c|
   c.option '--format STRING', String, 'Filename format'
   c.option '--head FIXNUM', String, 'Fetch page num from head'
   c.option '--tail FIXNUM', String, 'Fetch page num from tail'
+  c.option '--out STRING', String, 'Output directory'
   c.action do |args, options|
-    options.default :head => '5', :tail => '2', :format => ":title-(:author)-:page_nump_:isbn.pdf"
+    options.default :head => '5', :tail => '2', :format => ":title-(:author)-:page_nump_:isbn.pdf", :out => nil
 
     args.each do |file|
       next unless File.exist? file
@@ -81,7 +82,13 @@ command :rename do |c|
           name.gsub! key, value
         end
 
-        FileUtils.move(file, File.join(File.dirname(file), name))
+        if options.out == nil
+          dir = File.dirname(file)
+        else
+          dir = options.out
+        end
+
+        FileUtils.move(file, File.join(dir, name))
         puts file
         puts File.join(File.dirname(file), name)
         break

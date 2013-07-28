@@ -37,6 +37,7 @@ class BookInspect
     [[max_page_num - last_check_pages, max_page_num],[1, first_check_pages] ].each do |s, e|
       (s .. e).each do |pn|
         page_image = _read_image_from_pdf(pdf_reader, pn).shift
+        next unless page_image
         page_image.strip!
         [90, 90, 90].each do |degree|
           rotated_page_image = page_image.rotate!(degree)
@@ -58,7 +59,8 @@ class BookInspect
   end
 
   def _read_image_from_pdf(reader, page)
-    obj = reader.pages[page].xobjects.find{|k,v| v.hash[:Subtype] == :Image} 
+    obj = reader.pages[page].xobjects.find{|k,v| v.hash[:Subtype] == :Image}
+    return [] if obj[1].hash[:Filter] == :CCITTFaxDecode
     images = Magick::Image.from_blob(obj[1].data) do
       self.density = DENSITY
       self.quality = QUALITY
